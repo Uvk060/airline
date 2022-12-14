@@ -168,7 +168,6 @@ from .models import Flight, Passenger
 5)and in views.py change func flight -add:
 "non_passengers": Passenger.objects.exclude(flights=flight).all()
 
-
 add in flights/admin.py:
 
 class FlightAdmin(admin.ModelAdmin):
@@ -178,3 +177,109 @@ filter_horizontal=("flights",)
 admin.site.register(Airport)
 admin.site.register(Flight, FlightAdmin)
 admin.site.register(Passenger, PassengerAdmin)
+
+create new app "users":
+python manage.py startapp users
+
+in settings.py add 'users' ~
+INSTALLED_APPS = [
+'flights',
+'users',
+'django.contrib.admin',....
+
+in urls.py add about users:
+urlpatterns = [
+path('admin/', admin.site.urls),
+path('flights/', include('flights.urls')),
+path('users/', include('users.urls')),
+]
+
+in folder users create new file urls.py
+
+inside users/urls.py add:
+from django.urls import path
+from . import views
+urlpatterns = [
+path("", views.index, name="index"),
+path("login", views.login_view, name="login"),
+path("logout", views.logout_view, name="logout"),
+]
+
+now need to create this funcs: 1.index 2.login_view 3.logout_view in users/view.py:
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+def index(request):
+if not request.user.is_authenticated:
+return HttpResponseRedirect(reverse('login'))
+def login_view(request):
+return render(request, "users/login.html")
+def logout_view(request):
+pass
+
+in folder "users" create folder "templates", inside "users" folder, inside file layout.html
+
+inside layout.html:
+
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <title>Users/title>
+  </head>
+  <body>
+    {% block body %} {% endblock %}
+  </body>
+</html>
+
+in folder "users" create folder "templates", inside "users" folder, inside login.html:
+{{% extends "users/layout.html" %} {% block body %} {% if message %}
+
+<div>{{ message }}</div>
+{% endif %}
+<h2>LOGIN</h2>
+<form action="{% url 'login' %}" method="post">
+  {% csrf_token %}
+  <input type="text" name="username" , placeholder="Username" />
+  <input type="password" name="password" , placeholder="Password" />
+  <input type="submit" value="Login" />
+</form>
+{% endblock %}
+
+in views.py changes about log in and log out:
+from django.contrib.auth import authenticate, login, logout
+from django.shortcuts import render
+from django.http import HttpResponseRedirect
+from django.urls import reverse
+def index(request):
+if not request.user.is_authenticated:
+return HttpResponseRedirect(reverse('login'))
+return render(request, "users/user.html" )
+def login_view(request):
+if request.method =="POST":
+username = request.POST["username"]
+password = request.POST['password']
+user = authenticate(request, username=username, password=password)
+if user is not None:
+login(request, user)
+return HttpResponseRedirect(reverse("index"))
+else:
+return render(request, "users/login.html", {
+"message": "Invalid credentials."
+})
+return render(request, "users/login.html")
+def logout_view(request):
+logout(request)
+return render(request, "users/login.html",{
+"message": "Logged out."
+})
+
+and create user.html:
+{% extends "users/layout.html" %} {% block body %}
+
+<h2>Welcome, {{ request.user.first_name }}</h2>
+<ul>
+  <li>Username: {{request.user.username}}</li>
+  <li>Email: {{request.user.email}}</li>
+</ul>
+<a href="{% url 'logout' %}">Log Out</a>
+{% endblock %}
